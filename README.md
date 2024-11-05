@@ -1,11 +1,5 @@
 
-![](stgutg.png) 
-
-# STGUTG
-
-STGUTG (Signaling Traffic Generation/User Traffic Generation) is a software created for the generation of both signal and user traffic to be sent to a 5G network core. It is based on implementations from the [Free5GC](https://www.free5gc.org/) project and is distributed under an Apache 2.0 license.
-
-Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
+Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
 # List of branches/features
 - branch/feature#1
@@ -41,6 +35,14 @@ Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
 
 ########## OLD README - Under Reconstruction #################
+
+![](stgutg.png) 
+
+# STGUTG
+
+STGUTG (Signaling Traffic Generation/User Traffic Generation) is a software created for the generation of both signal and user traffic to be sent to a 5G network core. It is based on implementations from the [Free5GC](https://www.free5gc.org/) project and is distributed under an Apache 2.0 license.
+
+Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
 In this repository, the software has been adapted for use with [Open5GS](https://open5gs.org/).
 
