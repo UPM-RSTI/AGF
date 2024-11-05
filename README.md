@@ -53,8 +53,9 @@ go build
 ```
 nano src/config.yaml
 ```
-- [AGF-free5gc](https://github.com/UPM-RSTI/AGF/wiki/Free5gc-configuration)
-- [AGF-open5gs](https://github.com/UPM-RSTI/AGF/wiki/Open5gs-configuration)
+- [AGF-free5gc](https://github.com/UPM-RSTI/AGF/wiki/AGF-%E2%80%90-Free5gc-configuration)
+- [AGF-open5gs](https://github.com/UPM-RSTI/AGF/wiki/AGF-%E2%80%90-Open5gs-configuration)
+  
 
 ## Run
 ### Run executable
