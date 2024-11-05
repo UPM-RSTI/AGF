@@ -64,6 +64,13 @@ for testing mode
 ## FAQ
 *To be complete
 
+![](logorsti.png) 
+
+
+
+
+
+
 
 
 ########## OLD README - Under Reconstruction #################
@@ -137,5 +144,3 @@ sudo ./stgutgmain
 3. Use the UE VM to send traffic through the core to any Internet-based service (ping to 8.8.8.8 should suffice to test if the configuration is successful).
 
 ---
-
-![](logorsti.png) 
