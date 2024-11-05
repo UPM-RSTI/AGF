@@ -15,8 +15,10 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 - [FAQ](https://github.com/UPM-RSTI/AGF#FAQ)
 
 ## AGF Dependencies
-- go version: XXXXX
-- ```
+```
+go version: XXXXX
+```
+```
 sudo apt-get install libpcap-dev
 ```
 
