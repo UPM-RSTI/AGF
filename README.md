@@ -8,7 +8,7 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
 # Index
 - [AGF Dependencies](https://github.com/UPM-RSTI/AGF#Dependencies)
-- [5G Core Installation](https://github.com/UPM-RSTI/AGF#5G Core Installation)
+- [5G Core Installation](https://github.com/UPM-RSTI/AGF/blob/main/README.md#5g-core-installation)
 - [AGF Installation](https://github.com/UPM-RSTI/AGF#AGF-Installation)
 - [Configuration](https://github.com/UPM-RSTI/AGF#Configuraton)
 - [Examples](https://github.com/UPM-RSTI/AGF#Examples)
@@ -21,7 +21,7 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 - [free5gc](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-free5gc)
 - [open5gs](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-open5gs)
   
-## AGF-Installation
+## AGF Installation
 *To be complete
 
 ## Configuration
