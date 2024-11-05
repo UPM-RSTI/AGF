@@ -15,14 +15,24 @@ Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 - [FAQ](https://github.com/UPM-RSTI/AGF#FAQ)
 
 ## Dependencies
+*To be complete
+
 ## Installation
+*To be complete
+
 ## Configuration
-## Examples
-## FAQ
+*To be complete
 
 # Specific configuration guide
 - [AGF-free5gc](https://github.com/UPM-RSTI/AGF/wiki/Free5gc-configuration)
 - [AGF-open5gs](https://github.com/UPM-RSTI/AGF/wiki/Open5gs-configuration)
+
+## Examples
+*To be complete
+
+## FAQ
+*To be complete
+
 
 
 ########## OLD README - Under Reconstruction #################
