@@ -11,6 +11,7 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 - [5G Core Installation](https://github.com/UPM-RSTI/AGF/blob/main/README.md#5g-core-installation)
 - [AGF Installation](https://github.com/UPM-RSTI/AGF#AGF-Installation)
 - [Configuration](https://github.com/UPM-RSTI/AGF#Configuraton)
+- [Run](https://github.com/UPM-RSTI/AGF#Run)
 - [Examples](https://github.com/UPM-RSTI/AGF#Examples)
 - [FAQ](https://github.com/UPM-RSTI/AGF#FAQ)
 
@@ -27,17 +28,25 @@ sudo apt-get install libpcap-dev
 - [open5gs](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-open5gs)
   
 ## AGF Installation
-### 1. Build executable
+### Build executable
 
 ```
 go build
 ```
 
-### 2. Configure and run
 
+## Configuration
+*To be complete
+
+### Specific configuration guide
 ```
 nano src/config.yaml
 ```
+- [AGF-free5gc](https://github.com/UPM-RSTI/AGF/wiki/Free5gc-configuration)
+- [AGF-open5gs](https://github.com/UPM-RSTI/AGF/wiki/Open5gs-configuration)
+
+## Run
+### Run executable
 ```
 stgutgmain 
 ```
@@ -48,13 +57,6 @@ stgutgmain -t
 for testing mode
 
 ---
-
-## Configuration
-*To be complete
-
-### Specific configuration guide
-- [AGF-free5gc](https://github.com/UPM-RSTI/AGF/wiki/Free5gc-configuration)
-- [AGF-open5gs](https://github.com/UPM-RSTI/AGF/wiki/Open5gs-configuration)
 
 ## Examples
 *To be complete
