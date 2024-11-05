@@ -15,7 +15,10 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 - [FAQ](https://github.com/UPM-RSTI/AGF#FAQ)
 
 ## AGF Dependencies
-*To be complete
+- go version: XXXXX
+- ```
+sudo apt-get install libpcap-dev
+```
 
 ## 5G Core Installation
 - [free5gc](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-free5gc)
