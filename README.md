@@ -17,7 +17,7 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 ## Dependencies
 *To be complete
 
-## 5G core Installation
+## 5G Core Installation
 - [free5gc](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-free5gc)
 - [open5gs](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-open5gs)
   
