@@ -1,0 +1,50 @@
+info:
+  version: 0.9.0
+  description: STGUTG configuration file
+
+configuration:
+
+# Network Functions
+  amf_ngap: 192.168.61.4
+  amf_port: 38412 #48412
+
+  upf_port: 2152
+
+  gnb_gtp: 192.168.61.3
+  gnbg_port: 2152
+
+  gnb_ngap: 192.168.61.3
+  gnbn_port: 9487
+
+# UE
+  initial_imsi: "001010000000001"
+  mcc: "001"
+  mnc: "01"
+
+# GNB data
+  gnb_id: "\x00\x01\x02"
+  gnb_bitlength: 24
+  gnb_name: "open5gs"
+
+# UE Authentication Data
+  k: "465B5CE8B199B49FAA5F0A2EE238A6BC"
+  opc: "E8ED289DEBA952E4283B54E88E6183CA"
+  op: "E8ED289DEBA952E4283B54E88E6183CA"
+
+
+  sst: 1
+  sd: "010203"
+  
+  # Interaces for traffic
+  src_iface: "enp0s8"
+  dst_iface: "enp0s9"
+
+  # Number of UEs to use in traffic mode
+  ue_number: 1
+
+  # Number of repetitions for each test (Test mode)
+  ue_registration: 10
+  ue_pdu: 10
+  ue_service: 10
+  ue_pdu_release: 10
+  ue_deregistration: 10
