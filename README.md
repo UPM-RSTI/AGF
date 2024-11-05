@@ -23,7 +23,7 @@ Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 ## Configuration
 *To be complete
 
-# Specific configuration guide
+### Specific configuration guide
 - [AGF-free5gc](https://github.com/UPM-RSTI/AGF/wiki/Free5gc-configuration)
 - [AGF-open5gs](https://github.com/UPM-RSTI/AGF/wiki/Open5gs-configuration)
 
