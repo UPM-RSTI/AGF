@@ -7,6 +7,11 @@ STGUTG (Signaling Traffic Generation/User Traffic Generation) is a software crea
 
 Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
+# List of branches/features
+- branch/feature#1
+- branch/feature#2
+- branch/feature#3
+
 # Index
 - [Dependencies](https://github.com/UPM-RSTI/AGF#Dependencies)
 - [Installation](https://github.com/UPM-RSTI/AGF#Installation)
