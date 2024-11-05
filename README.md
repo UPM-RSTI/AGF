@@ -4,12 +4,18 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
 - **branch/feature#1**
   - **Description**: To be completed
+  - **Status of develop**: To be completed
+  - **5G Core compatibility**: Open5gs/free5gc
 
 - **branch/feature#2**
   - **Description**: To be completed
+  - **Status of develop**: To be completed
+  - **5G Core compatibility**: Open5gs/free5gc
 
 - **branch/feature#3**
   - **Description**: To be completed
+  - **Status of develop**: To be completed
+  - **5G Core compatibility**: Open5gs/free5gc
 
 # Index
 - [AGF Dependencies](https://github.com/UPM-RSTI/AGF#Dependencies)
