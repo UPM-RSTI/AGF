@@ -27,7 +27,27 @@ sudo apt-get install libpcap-dev
 - [open5gs](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-open5gs)
   
 ## AGF Installation
-*To be complete
+### 1. Build executable
+
+```
+go build
+```
+
+### 2. Configure and run
+
+```
+nano src/config.yaml
+```
+```
+stgutgmain 
+```
+or
+```
+stgutgmain -t 
+```
+for testing mode
+
+---
 
 ## Configuration
 *To be complete
@@ -56,35 +76,7 @@ Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 
 In this repository, the software has been adapted for use with [Open5GS](https://open5gs.org/).
 
-## Installation 
 
-### 1. Install dependencies
-
-```
-sudo apt-get install libpcap-dev
-```
-
-### 2. Build executable
-
-```
-go build
-```
-
-### 3. Configure and run
-
-```
-nano src/config.yaml
-```
-```
-stgutgmain 
-```
-or
-```
-stgutgmain -t 
-```
-for testing mode
-
----
 
 ## Example: Deployment scenario with Open5GS
 
