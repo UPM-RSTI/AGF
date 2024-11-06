@@ -30,6 +30,35 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
 ```
 go version: >= 1.20 (Tested with 1.20 and 1.21.4)
 ```
+- Step 1: Download go.
+Go to the official Go Downloads (https://go.dev/dl/) page and download the latest .tar.gz archive for Linux.
+
+- Step 2: Step 2: Install Golang
+```
+sudo tar -C /usr/local -xzf go1.x.x.linux-amd64.tar.gz
+```
+(Replace go1.x.x with the actual version you downloaded.)
+
+Step 3: Set Up Environment Variables
+Add Go’s bin directory to your PATH.
+
+Open your shell profile (.bashrc, .bash_profile, or .zshrc).
+Add the following line:
+```
+export PATH=$PATH:/usr/local/go/bin
+```
+Save the file and reload it:
+```
+source ~/.bashrc
+```
+
+Step 4: Verify Installation
+Check if Go is installed correctly:
+```
+go version
+```
+
+
 ```
 sudo apt-get install libpcap-dev
 ```
