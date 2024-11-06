@@ -39,7 +39,7 @@ sudo tar -C /usr/local -xzf go1.x.x.linux-amd64.tar.gz
 ```
 (Replace go1.x.x with the actual version you downloaded.)
 
-Step 3: Set Up Environment Variables
+- Step 3: Set Up Environment Variables
 Add Go’s bin directory to your PATH.
 
 Open your shell profile (.bashrc, .bash_profile, or .zshrc).
@@ -52,7 +52,7 @@ Save the file and reload it:
 source ~/.bashrc
 ```
 
-Step 4: Verify Installation
+- Step 4: Verify Installation
 Check if Go is installed correctly:
 ```
 go version
