@@ -76,7 +76,7 @@ go build
 
 
 ## Configuration
-*To be complete
+The AGF configuration depends on the 5G network core you want to connect to (free5gc or open5gs). Below are two independent guides to modify the config.yaml file in each case.
 
 ### Specific configuration guide
 ```
