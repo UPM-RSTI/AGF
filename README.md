@@ -13,13 +13,13 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
   - **5G Core compatibility**: Open5gs/free5gc
 
 - **6Green_Develop_Martin Branch**
-  - **Depends** : AGF_6Green
+  - **Depends** : AGF_6Green Branch
   - **Description**: To be completed
   - **Status of develop**: To be completed
   - **5G Core compatibility**: Open5gs/free5gc
  
 - **6Green_Develop_Roberto Branch**
-  - **Depends** : AGF_6Green
+  - **Depends** : AGF_6Green Branch
   - **Description**: To be completed
   - **Status of develop**: To be completed
   - **5G Core compatibility**: Open5gs/free5gc
