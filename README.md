@@ -49,10 +49,12 @@ sudo tar -C /usr/local -xzf go1.x.x.linux-amd64.tar.gz
 - Step 3: Set Up Environment Variables
 Add Go’s bin directory to your PATH.
 
-Open your shell profile (.bashrc, .bash_profile, or .zshrc).
-Add the following line:
+Type the following commands to export the Go Path persistent across reboots:
 ```
-export PATH=$PATH:/usr/local/go/bin
+echo 'export GOPATH=$HOME/go' >> ~/.bashrc
+echo 'export GOROOT=/usr/local/go' >> ~/.bashrc
+echo 'export PATH=$PATH:$GOPATH/bin:$GOROOT/bin' >> ~/.bashrc
+echo 'export GO111MODULE=auto' >> ~/.bashrc
 ```
 Save the file and reload it:
 ```
