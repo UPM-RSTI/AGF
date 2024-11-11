@@ -1,6 +1,13 @@
 # AGF - Access Gateway Function 
-
 Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
+
+<p align="justify">
+This software has been developed for use in a virtualised environment, where virtual connections can be established with software that implements the different Network Functions of a 5G network core. It is based on two fundamental modules. One of them implements the main signalling protocols and functions between user equipment (UEs) and the core network functions with which they communicate (mainly, the AMF (Access and Mobility Management Function). The other allows a GTP-U tunnel (GPRS Tunnelling Protocol for user traffic) to be established from the software to the core function in charge of managing this type of traffic (UPF – User Plane Function). The traffic that can be injected through this tunnel emulates the real user traffic that would be generated in the user's mobile equipment, for which it opens an IP connection with one or more remote machines and waits to receive traffic from arbitrary network applications (ping, web traffic, streaming, etc.).
+</p>
+
+<p align="justify">
+The characteristics of this program make it unnecessary to deploy a radio access network, as well as base stations, mobile equipment, etc. in test environments where experimentation on traffic behavior in the core of the network is required.
+</p>
 
 - **Main Branch**
   - **Description**: To be completed
