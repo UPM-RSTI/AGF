@@ -24,6 +24,8 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
   - **Status of develop**: To be completed
   - **5G Core compatibility**: Open5gs/free5gc
 
+![]code_structure.PNG
+
 # Index
 - [AGF Dependencies](https://github.com/UPM-RSTI/AGF#Dependencies)
 - [5G Core Installation](https://github.com/UPM-RSTI/AGF/blob/main/README.md#5g-core-installation)
