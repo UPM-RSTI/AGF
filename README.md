@@ -40,7 +40,7 @@ The repository structure consists of a file containing the main program code (st
 </p>
 
 # Index
-- [AGF Dependencies](https://github.com/UPM-RSTI/AGF#Dependencies)
+- [AGF Dependencies](https://github.com/UPM-RSTI/AGF#AGF-Dependencies)
 - [5G Core Installation](https://github.com/UPM-RSTI/AGF/blob/main/README.md#5g-core-installation)
 - [AGF Installation](https://github.com/UPM-RSTI/AGF#AGF-Installation)
 - [Configuration](https://github.com/UPM-RSTI/AGF#Configuraton)
