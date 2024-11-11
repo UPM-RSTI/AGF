@@ -24,7 +24,11 @@ Software Developed by [UPM RSTI Research group](https://blogs.upm.es/rsti).
   - **Status of develop**: To be completed
   - **5G Core compatibility**: Open5gs/free5gc
 
-![]code_structure.PNG
+The repository structure consists of a file containing the main program code (stg-utg.go) and a directory (src) containing the rest of the program source code. Within this directory we can find the configuration file (config.yaml), editable by the user according to the characteristics of the use case where the program is going to be used, and directories containing the implementations of the program's functionalities. The stgutg directory contains the code of the modules that make up the software, divided into several files. In the other two folders (tglib and free5gclib), there are the libraries inherited from the Free5G project that implement the protocols and functions used by the program, on which modifications have been made to adapt them to the requirements of the SGT/UTI.
+
+<p align="center">
+<img src=code_structure.PNG width="600" height="300" />
+</p>
 
 # Index
 - [AGF Dependencies](https://github.com/UPM-RSTI/AGF#Dependencies)
