@@ -127,7 +127,10 @@ for testing mode
 *To be complete
 
 ## FAQ
-*To be complete
+
+UPF container closes unexpectedly after docker compose up returning the following error: [ERRO][UPF][Main] UPF Cli Run Error: open Gtp5g: open link: create: operation not supported
+
+--Try removing gtp5g current installation and reinstall again. Check [free5gc](https://github.com/UPM-RSTI/AGF/wiki/Core-5G-%E2%80%90-free5gc) for compatible versions and further explanation.   
 
 ![](logorsti.png) 
 
