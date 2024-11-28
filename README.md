@@ -113,11 +113,11 @@ nano src/config.yaml
 ## Run
 ### Run executable
 ```
-stgutgmain 
+./stgutgmain 
 ```
 or
 ```
-stgutgmain -t 
+./stgutgmain -t 
 ```
 for testing mode
 
