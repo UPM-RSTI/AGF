@@ -977,7 +977,7 @@ func BuildPathSwitchRequest(sourceAmfUeNgapID, ranUeNgapID int64) (pdu ngapType.
 
 	// PDU Session Resource to be Switched in Downlink Item (in PDU Session Resource to be Switched in Downlink List)
 	pDUSessionResourceToBeSwitchedDLItem := ngapType.PDUSessionResourceToBeSwitchedDLItem{}
-	pDUSessionResourceToBeSwitchedDLItem.PDUSessionID.Value = 10
+	pDUSessionResourceToBeSwitchedDLItem.PDUSessionID.Value = 10 //pduId
 	pDUSessionResourceToBeSwitchedDLItem.PathSwitchRequestTransfer = GetPathSwitchRequestTransfer()
 
 	pDUSessionResourceToBeSwitchedDLList.List =
@@ -1008,7 +1008,8 @@ func BuildPathSwitchRequest(sourceAmfUeNgapID, ranUeNgapID int64) (pdu ngapType.
 	return pdu
 }
 
-func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64) (pdu ngapType.NGAPPDU) {
+// Modificado para requerir pduId
+func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64, pduId int64) (pdu ngapType.NGAPPDU) {
 
 	pdu.Present = ngapType.NGAPPDUPresentSuccessfulOutcome
 	pdu.SuccessfulOutcome = new(ngapType.SuccessfulOutcome)
@@ -1058,7 +1059,7 @@ func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64) (pdu ngapTy
 
 	//PDU SessionResource Admittedy Item
 	pDUSessionResourceAdmittedItem := ngapType.PDUSessionResourceAdmittedItem{}
-	pDUSessionResourceAdmittedItem.PDUSessionID.Value = 10
+	pDUSessionResourceAdmittedItem.PDUSessionID.Value = pduId
 	pDUSessionResourceAdmittedItem.HandoverRequestAcknowledgeTransfer = GetHandoverRequestAcknowledgeTransfer()
 
 	pDUSessionResourceAdmittedList.List = append(pDUSessionResourceAdmittedList.List, pDUSessionResourceAdmittedItem)
@@ -3009,8 +3010,10 @@ func BuildAMFConfigurationUpdate(amfName string, guamiList []ngapType.ServedGUAM
 	return pdu
 }
 
+// Modificado para no requerir targetCellID
+// Modificado para requerir pduId
 func BuildHandoverRequired(
-	amfUeNgapID, ranUeNgapID int64, targetGNBID []byte, targetCellID []byte) (pdu ngapType.NGAPPDU) {
+	amfUeNgapID, ranUeNgapID int64, targetGNBID []byte, pduId int64) (pdu ngapType.NGAPPDU) {
 
 	pdu.Present = ngapType.NGAPPDUPresentInitiatingMessage
 	pdu.InitiatingMessage = new(ngapType.InitiatingMessage)
@@ -3061,6 +3064,7 @@ func BuildHandoverRequired(
 
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
+	//Change cause for resource allocation
 	//Cause
 	ie = ngapType.HandoverRequiredIEs{}
 	ie.Id.Value = ngapType.ProtocolIEIDCause
@@ -3110,6 +3114,13 @@ func BuildHandoverRequired(
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
 	// Direct Forwarding Path Availability [optional]
+	/*Only possible value is 0
+	--------> Present == Direct Forwarding
+	--------> Nil == Indirect Forwarding
+	*/
+	//DirectForwardingPathAvailability := ngapType.DirectForwardingPathAvailabilityPresentDirectPathAvailable
+
+	//handoverRequiredIEs.List = append(handoverRequiredIEs.List, DirectForwardingPathAvailability)
 
 	// PDU Session Resource List
 	ie = ngapType.HandoverRequiredIEs{}
@@ -3122,7 +3133,7 @@ func BuildHandoverRequired(
 
 	//PDU Session Resource Item (in PDU Session Resource List)
 	pDUSessionResourceItem := ngapType.PDUSessionResourceItemHORqd{}
-	pDUSessionResourceItem.PDUSessionID.Value = 10
+	pDUSessionResourceItem.PDUSessionID.Value = pduId
 	pDUSessionResourceItem.HandoverRequiredTransfer = GetHandoverRequiredTransfer()
 
 	pDUSessionResourceListHORqd.List = append(pDUSessionResourceListHORqd.List, pDUSessionResourceItem)
@@ -3136,7 +3147,7 @@ func BuildHandoverRequired(
 	ie.Value.Present = ngapType.HandoverRequiredIEsPresentSourceToTargetTransparentContainer
 	ie.Value.SourceToTargetTransparentContainer = new(ngapType.SourceToTargetTransparentContainer)
 
-	ie.Value.SourceToTargetTransparentContainer.Value = GetSourceToTargetTransparentTransfer(targetGNBID, targetCellID)
+	ie.Value.SourceToTargetTransparentContainer.Value = GetSourceToTargetTransparentTransfer(targetGNBID, pduId)
 
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
@@ -3477,8 +3488,11 @@ func buildHandoverRequiredTransfer() (data ngapType.HandoverRequiredTransfer) {
 	return data
 }
 
+// Modificado para no requerir targetCellID
+// targetCellID se genera a partir del targetGnbID y un valor fijo de celda
+// Modificado para requerir pduId
 func buildSourceToTargetTransparentTransfer(
-	targetGNBID []byte, targetCellID []byte) (data ngapType.SourceNGRANNodeToTargetNGRANNodeTransparentContainer) {
+	targetGNBID []byte, pduId int64) (data ngapType.SourceNGRANNodeToTargetNGRANNodeTransparentContainer) {
 
 	// RRC Container
 	data.RRCContainer.Value = aper.OctetString("\x00\x00\x11")
@@ -3486,7 +3500,7 @@ func buildSourceToTargetTransparentTransfer(
 	// PDU Session Resource Information List
 	data.PDUSessionResourceInformationList = new(ngapType.PDUSessionResourceInformationList)
 	infoItem := ngapType.PDUSessionResourceInformationItem{}
-	infoItem.PDUSessionID.Value = 10
+	infoItem.PDUSessionID.Value = pduId
 	qosItem := ngapType.QosFlowInformationItem{}
 	qosItem.QosFlowIdentifier.Value = 1
 	infoItem.QosFlowInformationList.List = append(infoItem.QosFlowInformationList.List, qosItem)
@@ -3497,7 +3511,7 @@ func buildSourceToTargetTransparentTransfer(
 	data.TargetCellID.NRCGI = new(ngapType.NRCGI)
 	data.TargetCellID.NRCGI.PLMNIdentity = TestPlmn
 	data.TargetCellID.NRCGI.NRCellIdentity.Value = aper.BitString{
-		Bytes:     append(targetGNBID, targetCellID...),
+		Bytes:     append(targetGNBID, 0x00, 0x10),
 		BitLength: 36,
 	}
 
@@ -3665,8 +3679,10 @@ func GetHandoverRequiredTransfer() []byte {
 	return encodeData
 }
 
-func GetSourceToTargetTransparentTransfer(targetGNBID []byte, targetCellID []byte) []byte {
-	data := buildSourceToTargetTransparentTransfer(targetGNBID, targetCellID)
+// Modificado para no requerir targetCellID
+// Modificado para requerir pduId
+func GetSourceToTargetTransparentTransfer(targetGNBID []byte, pduId int64) []byte {
+	data := buildSourceToTargetTransparentTransfer(targetGNBID, pduId)
 	encodeData, err := aper.MarshalWithParams(data, "valueExt")
 	if err != nil {
 		fatal.Fatalf("aper MarshalWithParams error in GetSourceToTargetTransparentTransfer: %+v", err)

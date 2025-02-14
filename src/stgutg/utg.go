@@ -134,6 +134,7 @@ func SendTraffic(upfFD int, ethSocketConn tglib.EthSocketConn, teidUpfIPs map[[4
 			//fmt.Println(src_ip)
 
 			teidUpfIPsvalue, exists := teidUpfIPs[[4]byte(src_ip)]
+			//fmt.Println(teidUpfIPsvalue.teid)
 
 			if exists {
 				teid := teidUpfIPsvalue.teid

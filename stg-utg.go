@@ -50,6 +50,17 @@ func main() {
 			c.Configuration.Gnb_bitlength,
 			c.Configuration.Gnb_name)
 
+		//Go routine que se queda en espera escuchando en la conexión conn
+		//Crea dos canales, c1, y c2, y decide si enviar el paquete por el canal c1 (señalización normal) o por el c2, (handover)
+		/*~~~
+			msg := read
+			ngapMsg <- Decoder
+			if H.O.
+				c2 <- ngapMsg
+			else
+				c1 <- ngapMsg
+		~~~*/
+		//Asignar a cada método c1 o c2 en función de su cometido
 		for i := 0; i < c.Configuration.UeNumber; i++ {
 
 			fmt.Println(">> Creating new UE with IMSI:", imsi)
@@ -69,6 +80,9 @@ func main() {
 			pduList = append(pduList, pdu)
 
 			time.Sleep(1 * time.Second)
+
+			//fmt.Println("ueList:", ueList[0])
+
 		}
 
 		i := 0
@@ -89,7 +103,7 @@ func main() {
 			time.Sleep(1 * time.Second)
 		}
 
-		fmt.Println(teidUpfIPs)
+		fmt.Println("teidUpfIPs:", teidUpfIPs)
 
 		fmt.Println(">> Connecting to UPF")
 		upfFD, err := tglib.ConnectToUpf(c.Configuration.Gnbg_port)
@@ -117,8 +131,15 @@ func main() {
 
 		fmt.Println(">> Waiting for traffic to send (Press Ctrl+C to quit)")
 		go stgutg.SendTraffic(upfFD, ethSocketConn, teidUpfIPs, ctx, wg, utg_ul_thread_chan)
-
+		//fmt.Println(ethSocketConn)
 		utg_ul_thread := <-utg_ul_thread_chan
+
+		timer1 := time.NewTimer(10 * time.Second)
+
+		<-timer1.C
+		fmt.Println("Starting Handover Procedure")
+		//Debería recibir TargetGNBId e identificador del usuario que va a realizar el handover del controlador
+		stgutg.ManageHandoverRequired(conn, ueList[0], []byte(c.Configuration.Gnb_id))
 
 		// Program interrupted
 		sig := <-stopProgram
