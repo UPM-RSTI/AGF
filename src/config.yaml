@@ -5,15 +5,15 @@ info:
 configuration:
 
 # Network Functions
-  amf_ngap: 192.168.43.3
-  amf_port: 48412 #38412 #48412
+  amf_ngap: 10.21.0.239
+  amf_port: 48412 
 
   upf_port: 2152
 
-  gnb_gtp: 192.168.43.1
+  gnb_gtp: 10.21.0.195
   gnbg_port: 2152
 
-  gnb_ngap: 192.168.43.1
+  gnb_ngap: 10.21.0.195
   gnbn_port: 9487
 
 # UE
@@ -36,8 +36,8 @@ configuration:
   sd: "010203"
 
   # Interaces for traffic
-  src_iface: "enp0s8"
-  dst_iface: "enp0s9"
+  src_iface: "enp1s0np0np0"
+  dst_iface: "enp1s0np1np1"
 
   # Number of UEs to use in traffic mode
   ue_number: 1

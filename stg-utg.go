@@ -8,296 +8,314 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
+	"free5gclib/ngap"
+	"free5gclib/ngap/ngapType"
 	"stgutg"
 	"tglib"
+
+	"github.com/ishidawataru/sctp"
 )
+
+var (
+	c1 = make(chan *ngapType.NGAPPDU, 200) // Mensajes normales
+	c2 = make(chan *ngapType.NGAPPDU, 200) // Mensajes handover
+)
+
+var c stgutg.Conf
+
+// listenSCTPConnection: una sola goroutine lee de conn y decide si mandar el msg a c1 o c2
+func listenSCTPConnection(conn *sctp.SCTPConn, wg *sync.WaitGroup, ctx context.Context) {
+	fmt.Println("Entra en listenSCTPConnection")
+	wg.Add(1)
+	defer wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("[listenSCTPConnection] Cancelado, saliendo")
+			return
+		default:
+		}
+
+		buffer := make([]byte, 8092)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			if err.Error() == "use of closed network connection" {
+				log.Println("[listenSCTPConnection] Conexión SCTP cerrada")
+				return
+			}
+			log.Printf("[listenSCTPConnection] Error leyendo SCTP: %v", err)
+			continue
+		}
+
+		ngapMsg, err := ngap.Decoder(buffer[:n])
+		if err != nil {
+			log.Printf("[listenSCTPConnection] Error decodificando NGAP: %v", err)
+			continue
+		}
+
+		// Decide según sea HO o no
+		if isHandoverMessage(ngapMsg) {
+			select {
+			case c2 <- ngapMsg:
+			default:
+				log.Println("[listenSCTPConnection] Canal c2 lleno, descarto HO msg")
+			}
+		} else {
+			select {
+			case c1 <- ngapMsg:
+			default:
+				log.Println("[listenSCTPConnection] Canal c1 lleno, descarto msg normal")
+			}
+		}
+	}
+}
+
+// isHandoverMessage: detecta si es un mensaje de handover
+func isHandoverMessage(msg *ngapType.NGAPPDU) bool {
+	switch msg.Present {
+	case ngapType.NGAPPDUPresentInitiatingMessage:
+		if msg.InitiatingMessage != nil {
+			switch msg.InitiatingMessage.ProcedureCode.Value {
+			case ngapType.ProcedureCodeHandoverPreparation, // HandoverRequired
+				ngapType.ProcedureCodeHandoverResourceAllocation: // HandoverRequest
+				return true
+			}
+		}
+	case ngapType.NGAPPDUPresentSuccessfulOutcome:
+		if msg.SuccessfulOutcome != nil {
+			switch msg.SuccessfulOutcome.ProcedureCode.Value {
+			case ngapType.ProcedureCodeHandoverPreparation: // HandoverCommand
+				if msg.SuccessfulOutcome.Value.HandoverCommand != nil {
+					return true
+				}
+			case ngapType.ProcedureCodeHandoverResourceAllocation:
+				if msg.SuccessfulOutcome.Value.HandoverRequestAcknowledge != nil { //HandoverAck
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// handleMessages: escucha c1 y c2 y llama a stgutg.ProcessGeneralMessage / ProcessHandoverMessage
+func handleMessages(wg *sync.WaitGroup, ctx context.Context, conn *sctp.SCTPConn, ueList []*tglib.RanUeContext, teidUpfIPs map[[4]byte]stgutg.TeidUpfIp) {
+	c.GetConfiguration()
+	fmt.Println("Entra en handle message")
+	wg.Add(1)
+	defer wg.Done()
+
+	for {
+		select {
+		case msg := <-c1:
+			//Únicamente procesa mensajes del tipo PDUSessionResourceSetupRequest
+			//TODO: Añadir mas casos para soportar los mensajes de registro de usuario
+			stgutg.ProcessGeneralMessage(conn, msg, ueList, teidUpfIPs, c.Configuration.Gnb_gtp, c.Configuration.Upf_port)
+		case msg := <-c2:
+			stgutg.ProcessHandoverMessage(conn, msg, ueList)
+		case <-ctx.Done():
+			fmt.Println("[handleMessages] Cancelado, saliendo")
+			return
+		}
+	}
+}
 
 func main() {
 
-	var ueList []*tglib.RanUeContext
-	var pduList [][]byte
-	teidUpfIPs := make(map[[4]byte]stgutg.TeidUpfIp)
+	log.SetOutput(os.Stdout)
 
-	var c stgutg.Conf
+	var pduList [][]byte
+	// Define el contexto y WaitGroup para toda la ejecución
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	//var c stgutg.Conf
 	c.GetConfiguration()
 
-	mode := stgutg.GetMode(os.Args)
-
-	if mode == 1 {
-		fmt.Println("TRAFFIC MODE")
-		fmt.Println("----------------------")
-
-		fmt.Println(">> Connecting to AMF")
-		conn, err := tglib.ConnectToAmf(c.Configuration.Amf_ngap,
-			c.Configuration.Gnb_ngap,
-			c.Configuration.Amf_port,
-			c.Configuration.Gnbn_port)
-		stgutg.ManageError("Error in connection to AMF", err)
-
-		imsi := c.Configuration.Initial_imsi
-
-		fmt.Println(">> Managing NG Setup")
-		stgutg.ManageNGSetup(conn,
-			c.Configuration.Gnb_id,
-			imsi,
-			c.Configuration.Mnc,
-			c.Configuration.Gnb_bitlength,
-			c.Configuration.Gnb_name)
-
-		//Go routine que se queda en espera escuchando en la conexión conn
-		//Crea dos canales, c1, y c2, y decide si enviar el paquete por el canal c1 (señalización normal) o por el c2, (handover)
-		/*~~~
-			msg := read
-			ngapMsg <- Decoder
-			if H.O.
-				c2 <- ngapMsg
-			else
-				c1 <- ngapMsg
-		~~~*/
-		//Asignar a cada método c1 o c2 en función de su cometido
-		for i := 0; i < c.Configuration.UeNumber; i++ {
-
-			fmt.Println(">> Creating new UE with IMSI:", imsi)
-			ue := stgutg.CreateUE(imsi,
-				i,
-				c.Configuration.K,
-				c.Configuration.OPC,
-				c.Configuration.OP)
-
-			fmt.Println(">> Registering UE with IMSI:", imsi)
-			ue, pdu, _ := stgutg.RegisterUE(ue,
-				c.Configuration.Mnc,
-				c.Configuration.Mcc,
-				conn)
-
-			ueList = append(ueList, ue)
-			pduList = append(pduList, pdu)
-
-			time.Sleep(1 * time.Second)
-
-			//fmt.Println("ueList:", ueList[0])
-
-		}
-
-		i := 0
-		for _, pdu := range pduList {
-			fmt.Println(">> Establishing PDU session for", ueList[i].Supi)
-
-			// PDU info stored in teidUpfIPs
-			stgutg.EstablishPDU(c.Configuration.SST,
-				c.Configuration.SD,
-				pdu,
-				ueList[i],
-				conn,
-				c.Configuration.Gnb_gtp,
-				c.Configuration.Upf_port,
-				teidUpfIPs)
-
-			i++
-			time.Sleep(1 * time.Second)
-		}
-
-		fmt.Println("teidUpfIPs:", teidUpfIPs)
-
-		fmt.Println(">> Connecting to UPF")
-		upfFD, err := tglib.ConnectToUpf(c.Configuration.Gnbg_port)
-		stgutg.ManageError("Error in connection to UPF", err)
-
-		fmt.Println(">> Opening traffic interfaces")
-		ethSocketConn, err := tglib.NewEthSocketConn(c.Configuration.SrcIface)
-		stgutg.ManageError("Error creating Ethernet socket", err)
-
-		ipSocketConn, err := tglib.NewIPSocketConn()
-		stgutg.ManageError("Error creating IP socket", err)
-
-		var stopProgram = make(chan os.Signal)
-		signal.Notify(stopProgram, syscall.SIGTERM)
-		signal.Notify(stopProgram, syscall.SIGINT)
-
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		wg := &sync.WaitGroup{}
-		utg_ul_thread_chan := make(chan stgutg.Thread)
-
-		wg.Add(2)
-
-		fmt.Println(">> Listening to traffic responses")
-		go stgutg.ListenForResponses(ipSocketConn, upfFD, ctx, wg)
-
-		fmt.Println(">> Waiting for traffic to send (Press Ctrl+C to quit)")
-		go stgutg.SendTraffic(upfFD, ethSocketConn, teidUpfIPs, ctx, wg, utg_ul_thread_chan)
-		//fmt.Println(ethSocketConn)
-		utg_ul_thread := <-utg_ul_thread_chan
-
-		timer1 := time.NewTimer(10 * time.Second)
-
-		<-timer1.C
-		fmt.Println("Starting Handover Procedure")
-		//Debería recibir TargetGNBId e identificador del usuario que va a realizar el handover del controlador
-		stgutg.ManageHandoverRequired(conn, ueList[0], []byte(c.Configuration.Gnb_id))
-
-		// Program interrupted
-		sig := <-stopProgram
-		fmt.Println("\n>> Exiting program:", sig, "found")
-
-		cancelFunc() // Call for UTG to shut down
-
-		// Stop packet capture for both interfaces of UTG
-		C.pthread_kill(C.ulong(utg_ul_thread.Id), C.SIGUSR1)
-		syscall.Shutdown(upfFD, syscall.SHUT_RD)
-
-		for _, ue := range ueList {
-			fmt.Println(">> Releasing PDU session for", ue.Supi)
-			stgutg.ReleasePDU(c.Configuration.SST,
-				c.Configuration.SD,
-				ue,
-				conn)
-			time.Sleep(1 * time.Second)
-		}
-
-		for _, ue := range ueList {
-			fmt.Println(">> Deregistering UE", ue.Supi)
-			stgutg.DeregisterUE(ue,
-				c.Configuration.Mnc,
-				conn)
-			time.Sleep(2 * time.Second)
-		}
-
-		time.Sleep(1 * time.Second)
-		conn.Close()
-
-		fmt.Println(">> Waiting for UTG to shut down")
-		wg.Wait() // Wait for UTG to shut down, then close interfaces
-
-		fmt.Println(">> Closing network interfaces")
-		syscall.Close(upfFD)
-		syscall.Close(ethSocketConn.Fd)
-		syscall.Close(ipSocketConn.Fd)
-
-		time.Sleep(1 * time.Second)
-		os.Exit(0)
-
-	} else if mode == 2 {
-		fmt.Println("TEST MODE")
-		fmt.Println("----------------------")
-
-		pdu_establishment_number := stgutg.Min(c.Configuration.Test_ue_registation,
-			c.Configuration.Test_ue_pdu_establishment)
-
-		service_request_number := stgutg.Min(pdu_establishment_number,
-			c.Configuration.Test_ue_service)
-
-		pdu_release_number := stgutg.Min(pdu_establishment_number,
-			c.Configuration.Test_ue_pdu_release)
-
-		ue_deregistration_number := stgutg.Min(c.Configuration.Test_ue_registation,
-			c.Configuration.Test_ue_deregistration)
-
-		fmt.Println(">> Configured tests:")
-		fmt.Println("> Registering UEs:", c.Configuration.Test_ue_registation)
-		fmt.Println("> PDU sessions to establish:", pdu_establishment_number)
-		fmt.Println("> Services to request: ", service_request_number)
-		fmt.Println("> PDU sessions to release:", pdu_release_number)
-		fmt.Println("> Deregistering UEs:", ue_deregistration_number)
-		fmt.Println("----------------------")
-
-		fmt.Println(">> Connecting to AMF")
-		conn, err := tglib.ConnectToAmf(c.Configuration.Amf_ngap,
-			c.Configuration.Gnb_ngap,
-			c.Configuration.Amf_port,
-			c.Configuration.Gnbn_port)
-		stgutg.ManageError("Error in connection to AMF", err)
-
-		imsi := c.Configuration.Initial_imsi
-
-		fmt.Println(">> Managing NG Setup")
-		stgutg.ManageNGSetup(conn,
-			c.Configuration.Gnb_id,
-			imsi,
-			c.Configuration.Mnc,
-			c.Configuration.Gnb_bitlength,
-			c.Configuration.Gnb_name)
-
-		for i := 0; i < c.Configuration.Test_ue_registation; i++ {
-			fmt.Println(">> [ UE REGISTRATION TEST", i+1, "]")
-
-			fmt.Println(">> Creating new UE with IMSI:", imsi)
-			ue := stgutg.CreateUE(imsi,
-				i,
-				c.Configuration.K,
-				c.Configuration.OPC,
-				c.Configuration.OP)
-
-			fmt.Println(">> Registering UE with IMSI:", imsi)
-			ue, pdu, _ := stgutg.RegisterUE(ue,
-				c.Configuration.Mnc,
-				c.Configuration.Mcc,
-				conn)
-
-			ueList = append(ueList, ue)
-			pduList = append(pduList, pdu)
-
-			time.Sleep(1 * time.Second)
-		}
-
-		for i := 0; i < pdu_establishment_number; i++ {
-			fmt.Println(">> [ PDU ESTABLISHMENT TEST", i+1, "]")
-
-			fmt.Println(">> Establishing PDU session for", ueList[i].Supi)
-			stgutg.EstablishPDU(c.Configuration.SST,
-				c.Configuration.SD,
-				pduList[i],
-				ueList[i],
-				conn,
-				c.Configuration.Gnb_gtp,
-				c.Configuration.Upf_port,
-				teidUpfIPs)
-
-			time.Sleep(1 * time.Second)
-		}
-
-		for i := 0; i < service_request_number; i++ {
-			fmt.Println(">> [ SERVICE REQUEST TEST", i+1, "]")
-
-			fmt.Println(">> Requesting service for", ueList[i].Supi)
-			stgutg.ServiceRequest(pduList[i],
-				ueList[i],
-				conn,
-				c.Configuration.Gnb_gtp)
-
-			time.Sleep(1 * time.Second)
-		}
-
-		for i := 0; i < pdu_release_number; i++ {
-			fmt.Println(">> [ PDU RELEASE TEST", i+1, "]")
-
-			fmt.Println(">> Releasing PDU session for", ueList[i].Supi)
-			stgutg.ReleasePDU(c.Configuration.SST,
-				c.Configuration.SD,
-				ueList[i],
-				conn)
-			time.Sleep(1 * time.Second)
-		}
-
-		for i := 0; i < ue_deregistration_number; i++ {
-			fmt.Println(">> [ UE DEREGISTRATION TEST", i+1, "]")
-
-			fmt.Println(">> Deregistering UE", ueList[i].Supi)
-			stgutg.DeregisterUE(ueList[i],
-				c.Configuration.Mnc,
-				conn)
-			time.Sleep(1 * time.Second)
-
-		}
-
-		fmt.Println(">> All tests finished")
-		conn.Close()
-
-		os.Exit(0)
+	fmt.Println("[MAIN] Connecting to AMF")
+	conn, err := tglib.ConnectToAmf(
+		c.Configuration.Amf_ngap,
+		c.Configuration.Gnb_ngap,
+		c.Configuration.Amf_port,
+		c.Configuration.Gnbn_port,
+	)
+	stgutg.ManageError("Error in connection to AMF", err)
+	if err != nil {
+		defer conn.Close()
 	}
+
+	fmt.Println("[MAIN] Managing NG Setup")
+	stgutg.ManageNGSetup(
+		conn,
+		c.Configuration.Gnb_id,
+		c.Configuration.Initial_imsi,
+		c.Configuration.Mnc,
+		c.Configuration.Gnb_bitlength,
+		c.Configuration.Gnb_name,
+	)
+
+	// Listas de UEs y TEID
+	var ueList []*tglib.RanUeContext
+	teidUpfIPs := make(map[[4]byte]stgutg.TeidUpfIp)
+
+	// Registrar UEs (asumiendo que stgutg.RegisterUE no hace lecturas)
+	// Es posible que haya que llamar de nuevo a estos métodos tras ejecutar el Handover
+	/* El controlador confirma el Handover, y le pasa el imsi del usuario que se ha movido para que le registre de nuevo
+	 */
+	for i := 0; i < c.Configuration.UeNumber; i++ {
+		//Incremento del imsi en caso de registrar varios usuarios a la vez
+		imsiInt, err := strconv.Atoi(c.Configuration.Initial_imsi)
+		if err != nil {
+			fmt.Println(err)
+		}
+		imsi := strconv.Itoa(imsiInt + i)
+
+		fmt.Println(">> Creating new UE with IMSI:", imsi)
+		ue := stgutg.CreateUE(
+			imsi,
+			i,
+			c.Configuration.K,
+			c.Configuration.OPC,
+			c.Configuration.OP,
+		)
+
+		fmt.Println(">> Registering UE with IMSI:", imsi)
+		ue, pdu, _ := stgutg.RegisterUE(
+			ue,
+			c.Configuration.Mnc,
+			c.Configuration.Mcc,
+			conn,
+		)
+
+		// Guardar en listas
+		ueList = append(ueList, ue)
+		pduList = append(pduList, pdu)
+
+		time.Sleep(1 * time.Second) // Retraso entre registros
+	}
+
+	/* Una vez iniciada se queda en espera y trata todos los mensajes que lleguen antes de que entren en sus respectivas funciones.
+	   Soporta tratamiento de los mensajes de Handover Request y Command, y envía el RequestACK de manera sequencial.
+	   Una vez finalizado el Handover sigue la gorutine en espera de nuevos paquetes.
+	   TODO: Soporte para paquetes de registro del usuario
+	*/
+	// Iniciar goroutine lectora de SCTP
+	go listenSCTPConnection(conn, &wg, ctx)
+	// Iniciar goroutine que maneja los mensajes
+	go handleMessages(&wg, ctx, conn, ueList, teidUpfIPs)
+
+	i := 0
+	for _, pdu := range pduList {
+		fmt.Println(">> Establishing PDU session for", ueList[i].Supi)
+
+		// PDU info stored in teidUpfIPs
+		stgutg.EstablishPDU(c.Configuration.SST,
+			c.Configuration.SD,
+			pdu,
+			ueList[i],
+			conn,
+			c.Configuration.Gnb_gtp,
+			c.Configuration.Upf_port,
+			teidUpfIPs)
+
+		i++
+		time.Sleep(1 * time.Second)
+	}
+	fmt.Println("teidUpfIPs:", teidUpfIPs)
+
+	// Conectar a UPF
+	fmt.Println(">> Connecting to UPF")
+	upfFD, err := tglib.ConnectToUpf(c.Configuration.Gnbg_port)
+	stgutg.ManageError("Error in connection to UPF", err)
+
+	fmt.Println(">> Opening traffic interfaces")
+	ethSocketConn, err := tglib.NewEthSocketConn(c.Configuration.SrcIface)
+	stgutg.ManageError("Error creating Ethernet socket", err)
+
+	ipSocketConn, err := tglib.NewIPSocketConn()
+	stgutg.ManageError("Error creating IP socket", err)
+
+	// Canal para detener el programa
+	stopProgram := make(chan os.Signal, 1)
+	signal.Notify(stopProgram, syscall.SIGTERM, syscall.SIGINT)
+
+	// Lanzar ListenForResponses / SendTraffic
+	wg.Add(2) // Esperamos dos goroutines más
+	fmt.Println(">> Listening to traffic responses")
+	go stgutg.ListenForResponses(ipSocketConn, upfFD, ctx, &wg)
+
+	fmt.Println(">> Waiting for traffic to send (Press Ctrl+C to quit)")
+	utg_ul_thread_chan := make(chan stgutg.Thread)
+	go stgutg.SendTraffic(upfFD, ethSocketConn, teidUpfIPs, ctx, &wg, utg_ul_thread_chan)
+	utg_ul_thread := <-utg_ul_thread_chan
+
+	// Disparar handover tras 10s (opcional)
+	timer1 := time.NewTimer(10 * time.Second)
+	<-timer1.C
+	if len(ueList) > 0 {
+		fmt.Println("Starting Handover Procedure for UE:", ueList[0].Supi)
+		//Parametrizar el GNBid recibido
+		stgutg.ManageHandoverRequired(conn, ueList[0], []byte{0x00, 0x01, 0x03})
+	}
+
+	// Esperar señal
+	sig := <-stopProgram
+	fmt.Println("\n>> Exiting program:", sig, "found")
+
+	// Cancelamos el contexto (para cerrar goroutines)
+	cancelFunc()
+
+	// Detener captura
+	// Detener captura (versión corregida)
+	C.pthread_kill(
+		C.ulong(utg_ul_thread.Id),
+		C.int(syscall.SIGUSR1),
+	)
+	syscall.Shutdown(upfFD, syscall.SHUT_RD)
+
+	// Liberar PDU
+	for _, ue := range ueList {
+		fmt.Println(">> Releasing PDU session for", ue.Supi)
+		stgutg.ReleasePDU(
+			c.Configuration.SST,
+			c.Configuration.SD,
+			ue,
+			conn,
+		)
+		time.Sleep(1 * time.Second)
+	}
+
+	// Deregistrar UEs
+	for _, ue := range ueList {
+		fmt.Println(">> Deregistering UE", ue.Supi)
+		stgutg.DeregisterUE(
+			ue,
+			c.Configuration.Mnc,
+			conn,
+		)
+		time.Sleep(2 * time.Second)
+	}
+
+	time.Sleep(1 * time.Second)
+	conn.Close()
+
+	fmt.Println(">> Waiting for UTG to shut down")
+	wg.Wait() // Espera a que terminen todas las goroutines
+
+	fmt.Println(">> Closing network interfaces")
+	syscall.Close(upfFD)
+	syscall.Close(ethSocketConn.Fd)
+	syscall.Close(ipSocketConn.Fd)
+
+	time.Sleep(1 * time.Second)
+	os.Exit(0)
+
 }

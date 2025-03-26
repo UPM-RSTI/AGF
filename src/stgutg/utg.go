@@ -128,18 +128,20 @@ func SendTraffic(upfFD int, ethSocketConn tglib.EthSocketConn, teidUpfIPs map[[4
 
 			ethFrame := data[:frameSize]
 
-			//fmt.Println(ethFrame)
+			//fmt.Println("Trama Eth entrante:", ethFrame)
 
 			src_ip := ethFrame[14+12 : 14+16]
-			//fmt.Println(src_ip)
+			//fmt.Println("Source ip de la trama ethernet entrante:", src_ip)
 
 			teidUpfIPsvalue, exists := teidUpfIPs[[4]byte(src_ip)]
-			//fmt.Println(teidUpfIPsvalue.teid)
+			//fmt.Println("Esta mapeada la ip en el teidupdIPsvalue:", exists)
+			//fmt.Println("valor de TEID asociado a la trama:", teidUpfIPsvalue.teid)
 
 			if exists {
 				teid := teidUpfIPsvalue.teid
 
 				gtpHdr, err := tglib.BuildGTPv1Header(false, 0, false, 0, false, 0, uint16(len(ethFrame[14:])), teid)
+				//fmt.Println("gtpHdr:", gtpHdr)
 				ManageError("Error capturing and sending traffic", err)
 
 				err = syscall.Sendto(upfFD, append(gtpHdr, ethFrame[14:]...), 0, teidUpfIPsvalue.upfAddr)
