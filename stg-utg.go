@@ -22,6 +22,11 @@ import (
 	"tglib"
 
 	"github.com/ishidawataru/sctp"
+
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"net/http"
 )
 
 var (
@@ -129,6 +134,79 @@ func handleMessages(wg *sync.WaitGroup, ctx context.Context, conn *sctp.SCTPConn
 	}
 }
 
+type GnbPayload struct {
+	GnbId string `json:"gnbId"`
+}
+
+// Función para registrar el AGF
+func registerAGF(gnbId string) {
+	url := "http://138.4.21.21:8080/AGF_registration"
+
+	hexGnbId := hex.EncodeToString([]byte(gnbId))
+
+	// Crear el JSON
+	payload := GnbPayload{
+		GnbId: hexGnbId,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatalf("Error al serializar el payload: %v", err)
+	}
+
+	// Crear la solicitud HTTP POST
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Fatalf("Error al hacer la solicitud POST: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Verificar la respuesta
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Error en respuesta: %s", resp.Status)
+	} else {
+		log.Println("AGF registrado exitosamente")
+	}
+}
+
+type UserPayload struct {
+	InitialIMSI string `json:"initial_imsi"`
+	GnbId       string `json:"gnb_id"`
+}
+
+func registerUser(initialIMSI string, gnbId string) {
+	url := "http://138.4.21.21:8080/user_registration"
+
+	// Convertir el GNB ID a hexadecimal, como antes
+	hexGnbId := hex.EncodeToString([]byte(gnbId))
+
+	// Crear el payload
+	payload := UserPayload{
+		InitialIMSI: initialIMSI,
+		GnbId:       hexGnbId,
+	}
+
+	// Serializar a JSON
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatalf("Error al serializar el payload de usuario: %v", err)
+	}
+
+	// Enviar POST
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Fatalf("Error al hacer la solicitud POST de usuario: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Verificar respuesta
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Error en respuesta al registrar usuario: %s", resp.Status)
+	} else {
+		log.Println("Usuario registrado exitosamente")
+	}
+}
+
 func main() {
 
 	log.SetOutput(os.Stdout)
@@ -139,6 +217,8 @@ func main() {
 	var wg sync.WaitGroup
 	//var c stgutg.Conf
 	c.GetConfiguration()
+
+	registerAGF(c.Configuration.Gnb_id)
 
 	fmt.Println("[MAIN] Connecting to AMF")
 	conn, err := tglib.ConnectToAmf(
@@ -194,6 +274,8 @@ func main() {
 			c.Configuration.Mcc,
 			conn,
 		)
+
+		registerUser(c.Configuration.Gnb_id, imsi)
 
 		// Guardar en listas
 		ueList = append(ueList, ue)
