@@ -5,8 +5,12 @@ package stgutg
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"free5gclib/ngap/ngapType"
+	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"tglib"
@@ -15,6 +19,12 @@ import (
 )
 
 //VERSIÓN DE MARIO
+
+// Payload sent to the controller in the POST /dhcptrigger
+type dhcpTrigger struct {
+	UeIP     string `json:"ue"`
+	TargetID string `json:"gnbId"`
+}
 
 // ManageHandoverRequired -> solo envía el mensaje, la respuesta llega a la gorutine de escucha.
 func ManageHandoverRequired(conn *sctp.SCTPConn, ue *tglib.RanUeContext, targetGNBID []byte) {
@@ -32,7 +42,7 @@ func ManageHandoverRequired(conn *sctp.SCTPConn, ue *tglib.RanUeContext, targetG
 }
 
 // ProcessHandoverMessage procesa HORequest y HOCommand y envía HandoverRequestAcknowledge
-func ProcessHandoverMessage(conn *sctp.SCTPConn, msg *ngapType.NGAPPDU, ueList []*tglib.RanUeContext) {
+func ProcessHandoverMessage(conn *sctp.SCTPConn, msg *ngapType.NGAPPDU, ueList []*tglib.RanUeContext, supiToBip map[string][4]byte) {
 	fmt.Println("[ProcessHandoverMessage] Procesando mensaje relacionado con Handover...")
 
 	// Verificar si es un HandoverCommand
@@ -54,7 +64,56 @@ func ProcessHandoverMessage(conn *sctp.SCTPConn, msg *ngapType.NGAPPDU, ueList [
 				fmt.Printf("→ Handover Type: %d\n", ie.Value.HandoverType.Value)
 			}
 		}
+
+		// Extrae el AMF‑UE‑NGAP‑ID
+		var amfId int64
+		for _, ie := range msg.SuccessfulOutcome.Value.HandoverCommand.ProtocolIEs.List {
+			if ie.Id.Value == ngapType.ProtocolIEIDAMFUENGAPID {
+				amfId = ie.Value.AMFUENGAPID.Value
+				break
+			}
+		}
+
+		// Busca el RanUeContext correspondiente
+		var ue *tglib.RanUeContext
+		for _, u := range ueList {
+			if u.AmfUeNgapId == amfId {
+				ue = u
+				break
+			}
+		}
+		if ue == nil {
+			log.Printf("UE no encontrado para AMF‑UE‑NGAP‑ID %d", amfId)
+			return
+		}
+
+		// Obtiene la IP del usuario usando SUPI
+		ueIP, ok := getBipBySupi(ue.Supi, supiToBip)
+		if !ok {
+			log.Printf("No se encontró IP para SUPI %s", ue.Supi)
+			return
+		}
+
+		fmt.Println("[DEBUG] Mapa SUPI → IP actualmente registrado:")
+		for k, v := range supiToBip {
+			fmt.Printf("  %s => %d.%d.%d.%d\n", k, v[0], v[1], v[2], v[3])
+		}
+
+		// Dispara la petición al controlador mandandole la Ip
+		// recuperamos el targetGnbId que guardamos antes
+		targetBytes, ok := GetTargetGnb(ue.Supi)
+		if !ok {
+			log.Printf("No tengo target GNB para SUPI %s", ue.Supi)
+			return
+		}
+
+		// 2) Lo conviertes a string hex sin espacios
+		targetHex := hex.EncodeToString(targetBytes)
+
+		// 3) Llamas al controlador pasando IP y targetHex
+		postTriggerDHCP(ueIP, targetHex)
 		return
+		//Al llegar el Handover Command, extraemos el AMFUENGAPID, y matcheamos el usuario con el que coincida de la lista y enviamos el supi
 	}
 
 	// Verificar que el mensaje sea un HandoverRequest
@@ -135,4 +194,28 @@ func ProcessHandoverMessage(conn *sctp.SCTPConn, msg *ngapType.NGAPPDU, ueList [
 	} else {
 		fmt.Println("[ProcessHandoverMessage] Mensaje recibido no es HandoverRequest. Ignorado.")
 	}
+}
+
+// getBipBySupi formatea la IP ([4]byte) asociada a una SUPI
+func getBipBySupi(supi string, supiToBip map[string][4]byte) (string, bool) {
+	bip, ok := supiToBip[supi]
+	if !ok {
+		return "", false
+	}
+	ip := fmt.Sprintf("%d.%d.%d.%d", bip[0], bip[1], bip[2], bip[3])
+	return ip, true
+}
+
+// Función que una vez que llega el HO Command notifica al controlador que el cambio de IP es posible
+func postTriggerDHCP(ueIP, targetGnbId string) {
+	url := "http://138.4.21.21:8080/triggerDHCP"
+	body, _ := json.Marshal(dhcpTrigger{UeIP: ueIP, TargetID: targetGnbId})
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("Error POST /triggerDHCP: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+	log.Printf("DHCP Trigger → %s (destino GNB=%s) status %s", ueIP, targetGnbId, resp.Status)
 }

@@ -349,6 +349,7 @@ func ProcessPDUSessionResourceSetupRequest(
 	msg *ngapType.NGAPPDU,
 	ue *tglib.RanUeContext,
 	teidUpfIPs map[[4]byte]TeidUpfIp,
+	supiToBip map[string][4]byte, //añadimos
 	gnb_gtp string,
 	upf_port int,
 ) {
@@ -375,6 +376,7 @@ func ProcessPDUSessionResourceSetupRequest(
 
 	// Guardar en el mapa
 	teidUpfIPs[bip] = TeidUpfIp{teid, &upfAddr}
+	supiToBip[ue.Supi] = bip
 
 	fmt.Println("[ProcessPDUSessionResourceSetupRequest] TEID e IP asignados al UE.")
 
@@ -402,6 +404,7 @@ func ProcessGeneralMessage(
 	msg *ngapType.NGAPPDU,
 	ueList []*tglib.RanUeContext,
 	teidUpfIPs map[[4]byte]TeidUpfIp,
+	supiToBip map[string][4]byte,
 	gnb_gtp string,
 	upf_port int,
 ) {
@@ -412,7 +415,7 @@ func ProcessGeneralMessage(
 		// En tu caso, extráelo de RANUENGAPID o similar
 
 		for i := 0; i < len(ueList); i++ {
-			ProcessPDUSessionResourceSetupRequest(conn, msg, ueList[i], teidUpfIPs, gnb_gtp, upf_port)
+			ProcessPDUSessionResourceSetupRequest(conn, msg, ueList[i], teidUpfIPs, supiToBip, gnb_gtp, upf_port)
 			time.Sleep(1 * time.Second)
 		}
 	} else {

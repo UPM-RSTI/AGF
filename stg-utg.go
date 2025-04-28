@@ -29,9 +29,18 @@ import (
 	"net/http"
 )
 
+type HandoverRequest struct {
+	Supi  string
+	GnbId string
+}
+
 var (
 	c1 = make(chan *ngapType.NGAPPDU, 200) // Mensajes normales
 	c2 = make(chan *ngapType.NGAPPDU, 200) // Mensajes handover
+	//handoverTrigger = make(chan bool)                   // Canal para recibir el trigger del Handover
+	// canal ahora envía la SUPI concreta
+	//handoverTrigger = make(chan string, 1)
+	handoverTrigger = make(chan HandoverRequest, 1) //cambiamos el canal para que reciba una estructura en lugar del supi solo
 )
 
 var c stgutg.Conf
@@ -113,7 +122,7 @@ func isHandoverMessage(msg *ngapType.NGAPPDU) bool {
 }
 
 // handleMessages: escucha c1 y c2 y llama a stgutg.ProcessGeneralMessage / ProcessHandoverMessage
-func handleMessages(wg *sync.WaitGroup, ctx context.Context, conn *sctp.SCTPConn, ueList []*tglib.RanUeContext, teidUpfIPs map[[4]byte]stgutg.TeidUpfIp) {
+func handleMessages(wg *sync.WaitGroup, ctx context.Context, conn *sctp.SCTPConn, ueList []*tglib.RanUeContext, teidUpfIPs map[[4]byte]stgutg.TeidUpfIp, supiToBip map[string][4]byte) {
 	c.GetConfiguration()
 	fmt.Println("Entra en handle message")
 	wg.Add(1)
@@ -124,9 +133,9 @@ func handleMessages(wg *sync.WaitGroup, ctx context.Context, conn *sctp.SCTPConn
 		case msg := <-c1:
 			//Únicamente procesa mensajes del tipo PDUSessionResourceSetupRequest
 			//TODO: Añadir mas casos para soportar los mensajes de registro de usuario
-			stgutg.ProcessGeneralMessage(conn, msg, ueList, teidUpfIPs, c.Configuration.Gnb_gtp, c.Configuration.Upf_port)
+			stgutg.ProcessGeneralMessage(conn, msg, ueList, teidUpfIPs, supiToBip, c.Configuration.Gnb_gtp, c.Configuration.Upf_port)
 		case msg := <-c2:
-			stgutg.ProcessHandoverMessage(conn, msg, ueList)
+			stgutg.ProcessHandoverMessage(conn, msg, ueList, supiToBip)
 		case <-ctx.Done():
 			fmt.Println("[handleMessages] Cancelado, saliendo")
 			return
@@ -170,11 +179,14 @@ func registerAGF(gnbId string) {
 }
 
 type UserPayload struct {
-	InitialIMSI string `json:"initial_imsi"`
-	GnbId       string `json:"gnb_id"`
+	//InitialIMSI string `json:"initial_imsi"`
+	Supi  string `json:"supi"` // añadimos el supi
+	IMSI  string `json:"imsi"`
+	GnbId string `json:"gnb_id"`
 }
 
-func registerUser(initialIMSI string, gnbId string) {
+// Modificación de la petición de registro de un UE, para que el AGF envíe también el SUPI para identificación del usuario
+func registerUser(supi string, imsi string, gnbId string) {
 	url := "http://138.4.21.21:8080/user_registration"
 
 	// Convertir el GNB ID a hexadecimal, como antes
@@ -182,8 +194,9 @@ func registerUser(initialIMSI string, gnbId string) {
 
 	// Crear el payload
 	payload := UserPayload{
-		InitialIMSI: initialIMSI,
-		GnbId:       hexGnbId,
+		Supi:  supi, //se añade el supi
+		IMSI:  imsi,
+		GnbId: hexGnbId,
 	}
 
 	// Serializar a JSON
@@ -207,9 +220,64 @@ func registerUser(initialIMSI string, gnbId string) {
 	}
 }
 
+// Función que recibe la petición para disparar el Handover (cuando reciba el HO Command del Core y se lo notifiquemos al controlador)
+// Esta función actualmente recibe el gnbId, lo valida y enviaba a handoverTrigger el valor de true
+/*func handleHandoverTrigger(w http.ResponseWriter, r *http.Request) {
+	// Leer el cuerpo como JSON
+	var payload struct {
+		GnbId string `json:"gnbId"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		return
+	}
+
+	if payload.GnbId == "" {
+		http.Error(w, "Falta 'gnbId' en el JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Enviar señal para iniciar el Handover
+	handoverTrigger <- true
+
+	// Responder al controlador
+	fmt.Fprintf(w, "Handover solicitado para GNBId: %s", payload.GnbId)
+}
+*/
+
+// Función que inicia el handover (stg-utg.ManageHandoverRequired)
+func handleHandoverTrigger(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Supi  string `json:"supi"`
+		GnbId string `json:"gnbId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.Supi == "" || payload.GnbId == "" {
+		http.Error(w, "JSON inválido: falta supi o gnbId", http.StatusBadRequest)
+		return
+	}
+	handoverTrigger <- HandoverRequest{Supi: payload.Supi, GnbId: payload.GnbId}
+	fmt.Fprintf(w, "HO solicitado para SUPI %s a GNB %s", payload.Supi, payload.GnbId)
+}
+
+// Función para manejar el procedimiento de Handover
+/*func startHandoverProcedure(ueList []*tglib.RanUeContext, conn *sctp.SCTPConn) {
+	timer1 := time.NewTimer(10 * time.Second)
+	<-timer1.C
+	if len(ueList) > 0 {
+		fmt.Println("Starting Handover Procedure for UE:", ueList[0].Supi)
+		stgutg.ManageHandoverRequired(conn, ueList[0], []byte{0x00, 0x01, 0x02})
+	}
+}
+*/
+
+// MAIN
 func main() {
 
 	log.SetOutput(os.Stdout)
+	// Iniciar el servidor HTTP para escuchar el trigger
+	http.HandleFunc("/triggerHandover", handleHandoverTrigger)
+	go http.ListenAndServe("0.0.0.0:8082", nil)
 
 	var pduList [][]byte
 	// Define el contexto y WaitGroup para toda la ejecución
@@ -245,6 +313,8 @@ func main() {
 	// Listas de UEs y TEID
 	var ueList []*tglib.RanUeContext
 	teidUpfIPs := make(map[[4]byte]stgutg.TeidUpfIp)
+	//asociación de supi con bip
+	var supiToBip = make(map[string][4]byte)
 
 	// Registrar UEs (asumiendo que stgutg.RegisterUE no hace lecturas)
 	// Es posible que haya que llamar de nuevo a estos métodos tras ejecutar el Handover
@@ -275,7 +345,8 @@ func main() {
 			conn,
 		)
 
-		registerUser(c.Configuration.Gnb_id, imsi)
+		//se cambia el register para que incluya el supi
+		registerUser(ue.Supi, imsi, c.Configuration.Gnb_id)
 
 		// Guardar en listas
 		ueList = append(ueList, ue)
@@ -292,7 +363,7 @@ func main() {
 	// Iniciar goroutine lectora de SCTP
 	go listenSCTPConnection(conn, &wg, ctx)
 	// Iniciar goroutine que maneja los mensajes
-	go handleMessages(&wg, ctx, conn, ueList, teidUpfIPs)
+	go handleMessages(&wg, ctx, conn, ueList, teidUpfIPs, supiToBip)
 
 	i := 0
 	for _, pdu := range pduList {
@@ -339,14 +410,55 @@ func main() {
 	go stgutg.SendTraffic(upfFD, ethSocketConn, teidUpfIPs, ctx, &wg, utg_ul_thread_chan)
 	utg_ul_thread := <-utg_ul_thread_chan
 
+	/*
+		go func() {
+			for {
+				<-handoverTrigger
+				startHandoverProcedure(ueList, conn) // Ejecutar el Handover
+			}
+		}()
+	*/
 	// Disparar handover tras 10s (opcional)
-	timer1 := time.NewTimer(10 * time.Second)
+	/*timer1 := time.NewTimer(10 * time.Second)
 	<-timer1.C
 	if len(ueList) > 0 {
 		fmt.Println("Starting Handover Procedure for UE:", ueList[0].Supi)
 		//Parametrizar el GNBid recibido
 		stgutg.ManageHandoverRequired(conn, ueList[0], []byte{0x00, 0x01, 0x03})
 	}
+	*/
+	go func() {
+		for {
+			req := <-handoverTrigger // ahora recibimos un struct con SUPI y GNB
+			log.Printf("Trigger recibido: SUPI=%s, GNB destino=%s", req.Supi, req.GnbId)
+			var ue *tglib.RanUeContext
+
+			log.Println("Contenido actual de ueList en este AGF:")
+			for _, u := range ueList {
+				log.Printf(" - SUPI registrado: %s", u.Supi)
+			}
+			for _, u := range ueList {
+				if u.Supi == req.Supi {
+					ue = u
+					break
+				}
+			}
+			if ue == nil {
+				log.Printf("SUPI %s no encontrado en este AGF", req.Supi)
+				continue
+			}
+			log.Printf("Iniciando HO para UE %s (SUPI %s) hacia GNB %s", ue.Supi, req.Supi, req.GnbId)
+			// Usar el gnbId real como []byte (decodificar hex si viene así)
+			targetGnbIdBytes, err := hex.DecodeString(req.GnbId)
+			if err != nil {
+				log.Printf("Error al decodificar GNB ID: %v", err)
+				continue
+			}
+			log.Printf(" Ejecutando ManageHandoverRequired desde AGF con GNB ID: %s", c.Configuration.Gnb_id)
+			log.Printf("Target GNB (bytes): % X", targetGnbIdBytes)
+			stgutg.ManageHandoverRequired(conn, ue, targetGnbIdBytes)
+		}
+	}()
 
 	// Esperar señal
 	sig := <-stopProgram
