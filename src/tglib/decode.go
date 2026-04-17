@@ -18,3 +18,13 @@ func GetNasPdu(ue *RanUeContext, msg *ngapType.DownlinkNASTransport) (m *nas.Mes
 	}
 	return nil
 }
+
+// Not needed
+func GetAMFUENGAPID(msg *ngapType.HandoverRequest) (amfuengapid int64) {
+	for _, ie := range msg.ProtocolIEs.List {
+		if ie.Id.Value == ngapType.ProtocolIEIDAMFUENGAPID {
+			return ie.Value.AMFUENGAPID.Value
+		}
+	}
+	return 0
+}

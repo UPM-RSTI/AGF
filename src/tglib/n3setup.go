@@ -26,6 +26,6 @@ func ConnectToUpf(gnbPort int) (int, error) {
 	if err != nil && udpAddr.IP != nil {
 		return 0, fmt.Errorf("Bind socket: %s", err)
 	}
-
+	//fmt.Println("Código conexión upf", fd)
 	return fd, nil
 }

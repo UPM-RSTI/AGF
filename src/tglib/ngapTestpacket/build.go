@@ -977,7 +977,7 @@ func BuildPathSwitchRequest(sourceAmfUeNgapID, ranUeNgapID int64) (pdu ngapType.
 
 	// PDU Session Resource to be Switched in Downlink Item (in PDU Session Resource to be Switched in Downlink List)
 	pDUSessionResourceToBeSwitchedDLItem := ngapType.PDUSessionResourceToBeSwitchedDLItem{}
-	pDUSessionResourceToBeSwitchedDLItem.PDUSessionID.Value = 10
+	pDUSessionResourceToBeSwitchedDLItem.PDUSessionID.Value = 10 //pduId
 	pDUSessionResourceToBeSwitchedDLItem.PathSwitchRequestTransfer = GetPathSwitchRequestTransfer()
 
 	pDUSessionResourceToBeSwitchedDLList.List =
@@ -1008,7 +1008,8 @@ func BuildPathSwitchRequest(sourceAmfUeNgapID, ranUeNgapID int64) (pdu ngapType.
 	return pdu
 }
 
-func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64) (pdu ngapType.NGAPPDU) {
+// Modificado para requerir pduId
+func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64, pduId int64) (pdu ngapType.NGAPPDU) {
 
 	pdu.Present = ngapType.NGAPPDUPresentSuccessfulOutcome
 	pdu.SuccessfulOutcome = new(ngapType.SuccessfulOutcome)
@@ -1058,32 +1059,35 @@ func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64) (pdu ngapTy
 
 	//PDU SessionResource Admittedy Item
 	pDUSessionResourceAdmittedItem := ngapType.PDUSessionResourceAdmittedItem{}
-	pDUSessionResourceAdmittedItem.PDUSessionID.Value = 10
+	pDUSessionResourceAdmittedItem.PDUSessionID.Value = pduId
 	pDUSessionResourceAdmittedItem.HandoverRequestAcknowledgeTransfer = GetHandoverRequestAcknowledgeTransfer()
 
 	pDUSessionResourceAdmittedList.List = append(pDUSessionResourceAdmittedList.List, pDUSessionResourceAdmittedItem)
 
 	handoverRequestAcknowledgeIEs.List = append(handoverRequestAcknowledgeIEs.List, ie)
 
+	//No PDU sessions failed to setup
 	//PDU Session Resource Failed to setup List
-	ie = ngapType.HandoverRequestAcknowledgeIEs{}
-	ie.Id.Value = ngapType.ProtocolIEIDPDUSessionResourceFailedToSetupListHOAck
-	ie.Criticality.Value = ngapType.CriticalityPresentIgnore
-	ie.Value.Present = ngapType.HandoverRequestAcknowledgeIEsPresentPDUSessionResourceFailedToSetupListHOAck
-	ie.Value.PDUSessionResourceFailedToSetupListHOAck = new(ngapType.PDUSessionResourceFailedToSetupListHOAck)
+	//ie = ngapType.HandoverRequestAcknowledgeIEs{}
+	//ie.Id.Value = ngapType.ProtocolIEIDPDUSessionResourceFailedToSetupListHOAck
+	//ie.Criticality.Value = ngapType.CriticalityPresentIgnore
+	//ie.Value.Present = ngapType.HandoverRequestAcknowledgeIEsPresentPDUSessionResourceFailedToSetupListHOAck
+	//ie.Value.PDUSessionResourceFailedToSetupListHOAck = new(ngapType.PDUSessionResourceFailedToSetupListHOAck)
 
-	pDUSessionResourceFailedToSetupListHOAck := ie.Value.PDUSessionResourceFailedToSetupListHOAck
+	//pDUSessionResourceFailedToSetupListHOAck := ie.Value.PDUSessionResourceFailedToSetupListHOAck
+
+	//Dentro del HandoverResoruceAllocation manda el handover cancel
 
 	//PDU Session Resource Failed to setup Item
-	pDUSessionResourceFailedToSetupItemHOAck := ngapType.PDUSessionResourceFailedToSetupItemHOAck{}
-	pDUSessionResourceFailedToSetupItemHOAck.PDUSessionID.Value = 11
-	pDUSessionResourceFailedToSetupItemHOAck.HandoverResourceAllocationUnsuccessfulTransfer =
-		GetHandoverResourceAllocationUnsuccessfulTransfer()
+	//pDUSessionResourceFailedToSetupItemHOAck := ngapType.PDUSessionResourceFailedToSetupItemHOAck{}
+	//pDUSessionResourceFailedToSetupItemHOAck.PDUSessionID.Value = 11  //pduId???
+	//pDUSessionResourceFailedToSetupItemHOAck.HandoverResourceAllocationUnsuccessfulTransfer =
+	//	GetHandoverResourceAllocationUnsuccessfulTransfer()
 
-	pDUSessionResourceFailedToSetupListHOAck.List =
-		append(pDUSessionResourceFailedToSetupListHOAck.List, pDUSessionResourceFailedToSetupItemHOAck)
+	//pDUSessionResourceFailedToSetupListHOAck.List =
+	//	append(pDUSessionResourceFailedToSetupListHOAck.List, pDUSessionResourceFailedToSetupItemHOAck)
 
-	handoverRequestAcknowledgeIEs.List = append(handoverRequestAcknowledgeIEs.List, ie)
+	//handoverRequestAcknowledgeIEs.List = append(handoverRequestAcknowledgeIEs.List, ie)
 
 	//Target To Source TransparentContainer
 	ie = ngapType.HandoverRequestAcknowledgeIEs{}
@@ -1092,8 +1096,10 @@ func BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID int64) (pdu ngapTy
 	ie.Value.Present = ngapType.HandoverRequestAcknowledgeIEsPresentTargetToSourceTransparentContainer
 	ie.Value.TargetToSourceTransparentContainer = new(ngapType.TargetToSourceTransparentContainer)
 
-	targetToSourceTransparentContainer := ie.Value.TargetToSourceTransparentContainer
-	targetToSourceTransparentContainer.Value = aper.OctetString("\x00\x01\x00\x00")
+	//Antigua Implementación, modificado para construir el TargetToSourceTransparentContainer
+	//targetToSourceTransparentContainer := ie.Value.TargetToSourceTransparentContainer
+	//targetToSourceTransparentContainer.Value = aper.OctetString("\x00\x01\x00\x00")
+	ie.Value.TargetToSourceTransparentContainer.Value = GetTargetToSourceTransparentTransfer()
 
 	handoverRequestAcknowledgeIEs.List = append(handoverRequestAcknowledgeIEs.List, ie)
 
@@ -3009,8 +3015,10 @@ func BuildAMFConfigurationUpdate(amfName string, guamiList []ngapType.ServedGUAM
 	return pdu
 }
 
+// Modificado para no requerir targetCellID
+// Modificado para requerir pduId
 func BuildHandoverRequired(
-	amfUeNgapID, ranUeNgapID int64, targetGNBID []byte, targetCellID []byte) (pdu ngapType.NGAPPDU) {
+	amfUeNgapID, ranUeNgapID int64, targetGNBID []byte, pduId int64) (pdu ngapType.NGAPPDU) {
 
 	pdu.Present = ngapType.NGAPPDUPresentInitiatingMessage
 	pdu.InitiatingMessage = new(ngapType.InitiatingMessage)
@@ -3061,6 +3069,7 @@ func BuildHandoverRequired(
 
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
+	//Change cause for resource allocation
 	//Cause
 	ie = ngapType.HandoverRequiredIEs{}
 	ie.Id.Value = ngapType.ProtocolIEIDCause
@@ -3071,7 +3080,7 @@ func BuildHandoverRequired(
 	cause := ie.Value.Cause
 	cause.Present = ngapType.CausePresentRadioNetwork
 	cause.RadioNetwork = new(ngapType.CauseRadioNetwork)
-	cause.RadioNetwork.Value = ngapType.CauseRadioNetworkPresentHandoverDesirableForRadioReason
+	cause.RadioNetwork.Value = ngapType.CauseRadioNetworkPresentResourceOptimisationHandover
 
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
@@ -3110,6 +3119,20 @@ func BuildHandoverRequired(
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
 	// Direct Forwarding Path Availability [optional]
+	/*Only possible value is 0
+	--------> Present == Direct Forwarding
+	--------> Nil == Indirect Forwarding
+	*/
+	ie = ngapType.HandoverRequiredIEs{}
+	ie.Id.Value = ngapType.ProtocolIEIDDirectForwardingPathAvailability
+	ie.Criticality.Value = ngapType.CriticalityPresentReject
+	ie.Value.Present = ngapType.HandoverRequiredIEsPresentDirectForwardingPathAvailability
+	ie.Value.DirectForwardingPathAvailability = new(ngapType.DirectForwardingPathAvailability)
+
+	DirectForwardingPathAvailability := ie.Value.DirectForwardingPathAvailability
+	DirectForwardingPathAvailability.Value = ngapType.DirectForwardingPathAvailabilityPresentDirectPathAvailable
+
+	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
 	// PDU Session Resource List
 	ie = ngapType.HandoverRequiredIEs{}
@@ -3122,7 +3145,7 @@ func BuildHandoverRequired(
 
 	//PDU Session Resource Item (in PDU Session Resource List)
 	pDUSessionResourceItem := ngapType.PDUSessionResourceItemHORqd{}
-	pDUSessionResourceItem.PDUSessionID.Value = 10
+	pDUSessionResourceItem.PDUSessionID.Value = pduId
 	pDUSessionResourceItem.HandoverRequiredTransfer = GetHandoverRequiredTransfer()
 
 	pDUSessionResourceListHORqd.List = append(pDUSessionResourceListHORqd.List, pDUSessionResourceItem)
@@ -3136,7 +3159,7 @@ func BuildHandoverRequired(
 	ie.Value.Present = ngapType.HandoverRequiredIEsPresentSourceToTargetTransparentContainer
 	ie.Value.SourceToTargetTransparentContainer = new(ngapType.SourceToTargetTransparentContainer)
 
-	ie.Value.SourceToTargetTransparentContainer.Value = GetSourceToTargetTransparentTransfer(targetGNBID, targetCellID)
+	ie.Value.SourceToTargetTransparentContainer.Value = GetSourceToTargetTransparentTransfer(targetGNBID, pduId)
 
 	handoverRequiredIEs.List = append(handoverRequiredIEs.List, ie)
 
@@ -3437,6 +3460,8 @@ func buildPathSwitchRequestSetupFailedTransfer() (data ngapType.PathSwitchReques
 	return data
 }
 
+// Añadir este campo:
+// DLForwardingUPTNLInformation  *UPTransportLayerInformation `aper:"valueLB:0,valueUB:1,optional"`
 func buildHandoverRequestAcknowledgeTransfer() (data ngapType.HandoverRequestAcknowledgeTransfer) {
 
 	// DL NG-U UP TNL information
@@ -3458,6 +3483,50 @@ func buildHandoverRequestAcknowledgeTransfer() (data ngapType.HandoverRequestAck
 	return data
 }
 
+// Función auxiliar creada para construir el campo TargetToSourceTransparentTransfer
+func buildTargetToSourceTransparentTransfer() (data ngapType.TargetNGRANNodeToSourceNGRANNodeTransparentContainer) {
+
+	// RRC Container
+	data.RRCContainer.Value = aper.OctetString("\x00\x00\x11")
+
+	// // PDU Session Resource Information List
+	// data.PDUSessionResourceInformationList = new(ngapType.PDUSessionResourceInformationList)
+	// infoItem := ngapType.PDUSessionResourceInformationItem{}
+	// infoItem.PDUSessionID.Value = pduId
+	// qosItem := ngapType.QosFlowInformationItem{}
+	// qosItem.QosFlowIdentifier.Value = 1
+	// infoItem.QosFlowInformationList.List = append(infoItem.QosFlowInformationList.List, qosItem)
+	// data.PDUSessionResourceInformationList.List = append(data.PDUSessionResourceInformationList.List, infoItem)
+
+	// // Target Cell ID
+	// data.TargetCellID.Present = ngapType.TargetIDPresentTargetRANNodeID
+	// data.TargetCellID.NRCGI = new(ngapType.NRCGI)
+	// data.TargetCellID.NRCGI.PLMNIdentity = TestPlmn
+	// data.TargetCellID.NRCGI.NRCellIdentity.Value = aper.BitString{
+	// 	Bytes:     append(sourceGNBID, 0x00, 0x10),
+	// 	BitLength: 36,
+	// }
+
+	// // UE History Information
+	// lastVisitedCellItem := ngapType.LastVisitedCellItem{}
+	// lastVisitedCellInfo := &lastVisitedCellItem.LastVisitedCellInformation
+	// lastVisitedCellInfo.Present = ngapType.LastVisitedCellInformationPresentNGRANCell
+	// lastVisitedCellInfo.NGRANCell = new(ngapType.LastVisitedNGRANCellInformation)
+	// ngRanCell := lastVisitedCellInfo.NGRANCell
+	// ngRanCell.GlobalCellID.Present = ngapType.NGRANCGIPresentNRCGI
+	// ngRanCell.GlobalCellID.NRCGI = new(ngapType.NRCGI)
+	// ngRanCell.GlobalCellID.NRCGI.PLMNIdentity = TestPlmn
+	// ngRanCell.GlobalCellID.NRCGI.NRCellIdentity.Value = aper.BitString{
+	// 	Bytes:     []byte{0x00, 0x00, 0x00, 0x00, 0x10},
+	// 	BitLength: 36,
+	// }
+	// ngRanCell.CellType.CellSize.Value = ngapType.CellSizePresentVerysmall
+	// ngRanCell.TimeUEStayedInCell.Value = 10
+
+	// data.UEHistoryInformation.List = append(data.UEHistoryInformation.List, lastVisitedCellItem)
+	return data
+}
+
 func buildHandoverResourceAllocationUnsuccessfulTransfer() (
 	data ngapType.HandoverResourceAllocationUnsuccessfulTransfer) {
 
@@ -3471,14 +3540,18 @@ func buildHandoverResourceAllocationUnsuccessfulTransfer() (
 	return data
 }
 
+// Añadido campo DirectForwardingPath...
 func buildHandoverRequiredTransfer() (data ngapType.HandoverRequiredTransfer) {
 	data.DirectForwardingPathAvailability = new(ngapType.DirectForwardingPathAvailability)
 	data.DirectForwardingPathAvailability.Value = ngapType.DirectForwardingPathAvailabilityPresentDirectPathAvailable
 	return data
 }
 
+// Modificado para no requerir targetCellID
+// targetCellID se genera a partir del targetGnbID y un valor fijo de celda
+// Modificado para requerir pduId
 func buildSourceToTargetTransparentTransfer(
-	targetGNBID []byte, targetCellID []byte) (data ngapType.SourceNGRANNodeToTargetNGRANNodeTransparentContainer) {
+	targetGNBID []byte, pduId int64) (data ngapType.SourceNGRANNodeToTargetNGRANNodeTransparentContainer) {
 
 	// RRC Container
 	data.RRCContainer.Value = aper.OctetString("\x00\x00\x11")
@@ -3486,7 +3559,7 @@ func buildSourceToTargetTransparentTransfer(
 	// PDU Session Resource Information List
 	data.PDUSessionResourceInformationList = new(ngapType.PDUSessionResourceInformationList)
 	infoItem := ngapType.PDUSessionResourceInformationItem{}
-	infoItem.PDUSessionID.Value = 10
+	infoItem.PDUSessionID.Value = pduId
 	qosItem := ngapType.QosFlowInformationItem{}
 	qosItem.QosFlowIdentifier.Value = 1
 	infoItem.QosFlowInformationList.List = append(infoItem.QosFlowInformationList.List, qosItem)
@@ -3497,7 +3570,7 @@ func buildSourceToTargetTransparentTransfer(
 	data.TargetCellID.NRCGI = new(ngapType.NRCGI)
 	data.TargetCellID.NRCGI.PLMNIdentity = TestPlmn
 	data.TargetCellID.NRCGI.NRCellIdentity.Value = aper.BitString{
-		Bytes:     append(targetGNBID, targetCellID...),
+		Bytes:     append(targetGNBID, 0x00, 0x10),
 		BitLength: 36,
 	}
 
@@ -3647,6 +3720,16 @@ func GetHandoverRequestAcknowledgeTransfer() []byte {
 	return encodeData
 }
 
+// Funcion auxiliar creada para codificar el campo TargetToSource
+func GetTargetToSourceTransparentTransfer() []byte {
+	data := buildTargetToSourceTransparentTransfer()
+	encodeData, err := aper.MarshalWithParams(data, "valueExt")
+	if err != nil {
+		fatal.Fatalf("aper MarshalWithParams error in GetTargetToSourceTransparentTransfer: %+v", err)
+	}
+	return encodeData
+}
+
 func GetHandoverResourceAllocationUnsuccessfulTransfer() []byte {
 	data := buildHandoverResourceAllocationUnsuccessfulTransfer()
 	encodeData, err := aper.MarshalWithParams(data, "valueExt")
@@ -3665,8 +3748,10 @@ func GetHandoverRequiredTransfer() []byte {
 	return encodeData
 }
 
-func GetSourceToTargetTransparentTransfer(targetGNBID []byte, targetCellID []byte) []byte {
-	data := buildSourceToTargetTransparentTransfer(targetGNBID, targetCellID)
+// Modificado para no requerir targetCellID
+// Modificado para requerir pduId
+func GetSourceToTargetTransparentTransfer(targetGNBID []byte, pduId int64) []byte {
+	data := buildSourceToTargetTransparentTransfer(targetGNBID, pduId)
 	encodeData, err := aper.MarshalWithParams(data, "valueExt")
 	if err != nil {
 		fatal.Fatalf("aper MarshalWithParams error in GetSourceToTargetTransparentTransfer: %+v", err)

@@ -85,14 +85,17 @@ func GetPathSwitchRequest(amfUeNgapID int64, ranUeNgapID int64) ([]byte, error) 
 	return ngap.Encoder(message)
 }
 
+// Modificado para no requerir targetCellID
+// Modificado para requerir pduId
 func GetHandoverRequired(
-	amfUeNgapID int64, ranUeNgapID int64, targetGNBID []byte, targetCellID []byte) ([]byte, error) {
-	message := ngapTestpacket.BuildHandoverRequired(amfUeNgapID, ranUeNgapID, targetGNBID, targetCellID)
+	amfUeNgapID int64, ranUeNgapID int64, targetGNBID []byte, pduId int64) ([]byte, error) {
+	message := ngapTestpacket.BuildHandoverRequired(amfUeNgapID, ranUeNgapID, targetGNBID, pduId)
 	return ngap.Encoder(message)
 }
 
-func GetHandoverRequestAcknowledge(amfUeNgapID int64, ranUeNgapID int64) ([]byte, error) {
-	message := ngapTestpacket.BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID)
+// Modificado para requerir pduId
+func GetHandoverRequestAcknowledge(amfUeNgapID int64, ranUeNgapID int64, pduId int64) ([]byte, error) {
+	message := ngapTestpacket.BuildHandoverRequestAcknowledge(amfUeNgapID, ranUeNgapID, pduId)
 	return ngap.Encoder(message)
 }
 
